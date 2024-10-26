@@ -25,7 +25,7 @@ function Image3D({ position, scale, url, onClick }: ImageProps) {
       group.current.position.z = THREE.MathUtils.damp(group.current.position.z, Math.max(0, data.delta * 50), 4, delta);
       (ref.current.material as THREE.MeshBasicMaterial).opacity = THREE.MathUtils.damp(
         (ref.current.material as THREE.MeshBasicMaterial).opacity,
-        Math.max(0.2, 1 - data.delta * 1000),
+        Math.max(0.8, 1 - data.delta * 1000),
         4,
         delta
       );
@@ -154,12 +154,9 @@ export default function Home() {
       </div>
       <Canvas gl={{ antialias: false }} dpr={[1, 1.5]}>
         <Suspense fallback={<Loader />}>
-          <ScrollControls infinite horizontal damping={4} pages={Math.ceil(urls.length / 3)} distance={1}>
+          <ScrollControls infinite horizontal damping={1} pages={Math.ceil(urls.length / 3)} distance={1}>
             <Scroll>
               <Pages urls={urls} onImageClick={handleImageClick} />
-            </Scroll>
-            <Scroll html>
-              {/* Commented out HTML content */}
             </Scroll>
           </ScrollControls>
           <Preload all />
@@ -191,13 +188,17 @@ export default function Home() {
             alignItems: 'center', 
             backgroundColor: 'rgba(0, 0, 0, 0.85)',
             borderRadius: '8px',
+            position: 'relative',
           }}>
-          <Image 
-            src={selectedImage} 
-            alt="Selected"
-            objectFit="fill"
-            layout="fill"
-          />
+            <Image 
+              src={selectedImage} 
+              alt="Selected"
+              fill
+              style={{ 
+                objectFit: 'contain',
+                boxShadow: '0 0 20px rgba(255, 255, 255, 0.1)'
+              }} 
+            />
           </div>
         )}
       </Modal>
