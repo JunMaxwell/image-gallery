@@ -9,11 +9,11 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@ant-design/icons": "^5.0.1",
+    "@ant-design/icons": "^5.5.1",
     "@react-three/drei": "^8.12.0",
     "@react-three/fiber": "^7.0.26",
     "@types/three": "^0.138.0",
-    "antd": "^5.4.0",
+    "antd": "^5.21.5",
     "next": "12.1.0",
     "react": "17.0.2",
     "react-dom": "17.0.2",
