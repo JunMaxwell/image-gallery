@@ -106,6 +106,7 @@ function UploadButton({ onUpload }: { onUpload: (file: RcFile) => void }) {
       onUpload(file);
       return false;
     },
+    showUploadList: false, // Add this line to hide the upload list
   };
 
   return (
@@ -127,9 +128,10 @@ export default function Home() {
   const handleUpload = useCallback((file: RcFile) => {
     const reader = new FileReader();
     reader.onload = (e) => {
-      if (!e.target || !e.target.result) return;
-      setUrls(prevUrls => [...prevUrls, e.target.result]);
-      message.success(`${file.name} file uploaded successfully`);
+      if (e.target && typeof e.target.result === 'string') {
+        setUrls(prevUrls => [...prevUrls, e.target.result]);
+        message.success(`${file.name} file uploaded successfully`);
+      }
     };
     reader.readAsDataURL(file);
   }, []);
