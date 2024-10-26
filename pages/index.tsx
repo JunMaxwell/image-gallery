@@ -5,6 +5,7 @@ import { Preload, useTexture, ScrollControls, Scroll, useScroll, Html, useProgre
 import { Button, message, Upload, Modal } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import type { RcFile, UploadProps } from 'antd/es/upload';
+import Image from 'next/image';
 
 interface ImageProps {
   position: [number, number, number];
@@ -191,16 +192,12 @@ export default function Home() {
             backgroundColor: 'rgba(0, 0, 0, 0.85)',
             borderRadius: '8px',
           }}>
-            <img 
-              src={selectedImage} 
-              alt="Selected" 
-              style={{ 
-                maxWidth: '100%', 
-                maxHeight: '100%', 
-                objectFit: 'contain',
-                boxShadow: '0 0 20px rgba(255, 255, 255, 0.1)'
-              }} 
-            />
+          <Image 
+            src={selectedImage} 
+            alt="Selected"
+            objectFit="fill"
+            layout="fill"
+          />
           </div>
         )}
       </Modal>
