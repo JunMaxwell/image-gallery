@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { Suspense, useRef, useMemo, useState, useCallback } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Preload, useTexture, ScrollControls, Scroll, useScroll, Html, useProgress } from "@react-three/drei";
-import { Button, message, Upload } from 'antd';
+import { Button, message, Upload, Modal } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import type { RcFile, UploadProps } from 'antd/es/upload';
 
@@ -10,10 +10,10 @@ interface ImageProps {
   position: [number, number, number];
   scale: [number, number, number];
   url: string;
-  alt?: string;
+  onClick: () => void;
 }
 
-function Image({ position, scale, url }: ImageProps) {
+function Image3D({ position, scale, url, onClick }: ImageProps) {
   const ref = useRef<THREE.Mesh>(null);
   const group = useRef<THREE.Group>(null);
   const data = useScroll();
@@ -24,7 +24,7 @@ function Image({ position, scale, url }: ImageProps) {
       group.current.position.z = THREE.MathUtils.damp(group.current.position.z, Math.max(0, data.delta * 50), 4, delta);
       (ref.current.material as THREE.MeshBasicMaterial).opacity = THREE.MathUtils.damp(
         (ref.current.material as THREE.MeshBasicMaterial).opacity,
-        Math.max(0.8, 1 - data.delta * 1000),
+        Math.max(0.2, 1 - data.delta * 1000),
         4,
         delta
       );
@@ -35,7 +35,7 @@ function Image({ position, scale, url }: ImageProps) {
 
   return (
     <group ref={group}>
-      <mesh ref={ref} position={position} scale={scale} material={material}>
+      <mesh ref={ref} position={position} scale={scale} material={material} onClick={onClick}>
         <planeGeometry args={[1, 1]} />
       </mesh>
     </group>
@@ -46,20 +46,21 @@ interface PageProps {
   m?: number;
   urls: string[];
   position?: [number, number, number];
+  onImageClick: (url: string) => void;
 }
 
-function Page({ m = 0.4, urls, ...props }: PageProps) {
+function Page({ m = 0.4, urls, onImageClick, ...props }: PageProps) {
   const { width } = useThree((state) => state.viewport);
   const w = width < 10 ? 1.5 / 3 : 1 / 3;
   return (
     <group {...props}>
       {urls.map((url, index) => (
-        <Image 
+        <Image3D 
           key={index} 
           position={[(index - 1) * width * w, 0, index - 1]} 
           scale={[width * w - m * 2, 5, 1]} 
           url={url} 
-          alt = 'img'
+          onClick={() => onImageClick(url)}
         />
       ))}
     </group>
@@ -79,7 +80,7 @@ function Loader() {
   return null
 }
 
-function Pages({ urls }: { urls: string[] }) {
+function Pages({ urls, onImageClick }: { urls: string[], onImageClick: (url: string) => void }) {
   const { width } = useThree((state) => state.viewport);
   const pageUrls = useMemo(() => {
     const pages = [];
@@ -92,7 +93,7 @@ function Pages({ urls }: { urls: string[] }) {
   return (
     <>
       {pageUrls.map((pageUrl, index) => (
-        <Page key={index} position={[width * index, 0, 0]} urls={pageUrl} />
+        <Page key={index} position={[width * index, 0, 0]} urls={pageUrl} onImageClick={onImageClick} />
       ))}
     </>
   );
@@ -106,7 +107,7 @@ function UploadButton({ onUpload }: { onUpload: (file: RcFile) => void }) {
       onUpload(file);
       return false;
     },
-    showUploadList: false, // Add this line to hide the upload list
+    showUploadList: false,
   };
 
   return (
@@ -124,6 +125,7 @@ export default function Home() {
     "/image10.jpeg", "/image11.jpeg", "/image12.jpeg",
     "/image13.jpeg", "/image14.jpeg", "/image15.jpeg"
   ]);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const handleUpload = useCallback((file: RcFile) => {
     const reader = new FileReader();
@@ -136,6 +138,14 @@ export default function Home() {
     reader.readAsDataURL(file);
   }, []);
 
+  const handleImageClick = useCallback((url: string) => {
+    setSelectedImage(url);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setSelectedImage(null);
+  }, []);
+
   return (
     <>
       <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 1000 }}>
@@ -145,7 +155,7 @@ export default function Home() {
         <Suspense fallback={<Loader />}>
           <ScrollControls infinite horizontal damping={4} pages={Math.ceil(urls.length / 3)} distance={1}>
             <Scroll>
-              <Pages urls={urls} />
+              <Pages urls={urls} onImageClick={handleImageClick} />
             </Scroll>
             <Scroll html>
               {/* Commented out HTML content */}
@@ -154,6 +164,46 @@ export default function Home() {
           <Preload all />
         </Suspense>
       </Canvas>
+      <Modal
+        open={selectedImage !== null}
+        onCancel={handleCloseModal}
+        footer={null}
+        width="80%"
+        style={{ maxWidth: '800px', top: '50%', transform: 'translateY(-50%)' }}
+        styles={{
+          body: { 
+            padding: 0, 
+            height: '60vh', 
+            maxHeight: '600px', 
+            overflow: 'hidden',
+            borderRadius: '8px',
+          },
+          mask: { backdropFilter: 'blur(5px)' },
+        }}
+      >
+        {selectedImage && (
+          <div style={{ 
+            width: '100%', 
+            height: '100%', 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+            borderRadius: '8px',
+          }}>
+            <img 
+              src={selectedImage} 
+              alt="Selected" 
+              style={{ 
+                maxWidth: '100%', 
+                maxHeight: '100%', 
+                objectFit: 'contain',
+                boxShadow: '0 0 20px rgba(255, 255, 255, 0.1)'
+              }} 
+            />
+          </div>
+        )}
+      </Modal>
     </>
   );
 }
