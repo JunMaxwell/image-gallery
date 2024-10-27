@@ -1,13 +1,14 @@
 import * as THREE from "three";
-import { Suspense, useRef, useMemo, useState, useCallback, useEffect } from "react";
+import { Suspense, useRef, useMemo, useState, useCallback } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Preload, useTexture, ScrollControls, Scroll, useScroll, Html, useProgress } from "@react-three/drei";
-import { Button, message, Upload, Modal, Input, List } from 'antd';
+import { Button, message, Upload, Modal, Input, List, Avatar } from 'antd';
 import { UploadOutlined, DeleteOutlined, EditOutlined, LogoutOutlined } from '@ant-design/icons';
 import type { RcFile, UploadProps } from 'antd/es/upload';
 import Image from 'next/image';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/router';
+
 interface ImageProps {
   position: [number, number, number];
   scale: [number, number, number];
@@ -18,6 +19,11 @@ interface ImageProps {
 interface Comment {
   id: string;
   text: string;
+  user: {
+    name: string;
+    email: string;
+  };
+  createdAt: Date;
 }
 
 interface ImageData {
@@ -36,7 +42,7 @@ function Image3D({ position, scale, url, onClick }: ImageProps) {
       group.current.position.z = THREE.MathUtils.damp(group.current.position.z, Math.max(0, data.delta * 50), 4, delta);
       (ref.current.material as THREE.MeshBasicMaterial).opacity = THREE.MathUtils.damp(
         (ref.current.material as THREE.MeshBasicMaterial).opacity,
-        Math.max(0.8, 1 - data.delta * 1000),
+        Math.max(0.2, 1 - data.delta * 1000),
         4,
         delta
       );
@@ -129,11 +135,12 @@ function UploadButton({ onUpload }: { onUpload: (file: RcFile) => void }) {
   );
 }
 
-function CommentSection({ comments, onAddComment, onEditComment, onDeleteComment }: {
+function CommentSection({ comments, onAddComment, onEditComment, onDeleteComment, currentUser }: {
   comments: Comment[];
   onAddComment: (text: string) => void;
   onEditComment: (id: string, newText: string) => void;
   onDeleteComment: (id: string) => void;
+  currentUser: { name: string; email: string };
 }) {
   const [newComment, setNewComment] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -173,24 +180,32 @@ function CommentSection({ comments, onAddComment, onEditComment, onDeleteComment
         renderItem={(comment) => (
           <List.Item
             actions={[
-              <Button key="edit" icon={<EditOutlined />} onClick={() => handleEditClick(comment)} />,
-              <Button key="delete" icon={<DeleteOutlined />} onClick={() => onDeleteComment(comment.id)} />,
+              comment.user.email === currentUser.email && (
+                <>
+                  <Button key="edit" icon={<EditOutlined />} onClick={() => handleEditClick(comment)} />
+                  <Button key="delete" icon={<DeleteOutlined />} onClick={() => onDeleteComment(comment.id)} />
+                </>
+              )
             ]}
           >
-            {editingId === comment.id ? (
-              <>
-                <Input.TextArea
-                  value={editText}
-                  onChange={(e) => setEditText(e.target.value)}
-                  autoSize={{ minRows: 2, maxRows: 4 }}
-                />
-                <Button onClick={() => handleEditSave(comment.id)}>Save</Button>
-              </>
-            ) : (
-              <List.Item.Meta
-                title={comment.text}
-              />
-            )}
+            <List.Item.Meta
+              avatar={<Avatar src={`https://www.gravatar.com/avatar/${comment.user.email}?d=identicon&s=40`} />}
+              title={comment.user.name}
+              description={
+                editingId === comment.id ? (
+                  <>
+                    <Input.TextArea
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      autoSize={{ minRows: 2, maxRows: 4 }}
+                    />
+                    <Button onClick={() => handleEditSave(comment.id)}>Save</Button>
+                  </>
+                ) : (
+                  comment.text
+                )
+              }
+            />
           </List.Item>
         )}
       />
@@ -220,12 +235,6 @@ export default function Home() {
   ]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    }
-  }, [status, router]);
-
   const handleUpload = useCallback((file: RcFile) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -246,14 +255,14 @@ export default function Home() {
   }, []);
 
   const handleAddComment = useCallback((text: string) => {
-    if (selectedImage) {
+    if (selectedImage && session?.user) {
       setImages(prevImages => prevImages.map(img => 
         img.url === selectedImage 
-          ? { ...img, comments: [...img.comments, { id: Date.now().toString(), text }] }
+          ? { ...img, comments: [...img.comments, { id: Date.now().toString(), text, user: { name: session.user.name || '', email: session.user.email || '' }, createdAt: new Date() }] }
           : img
       ));
     }
-  }, [selectedImage]);
+  }, [selectedImage, session]);
 
   const handleEditComment = useCallback((id: string, newText: string) => {
     if (selectedImage) {
@@ -278,7 +287,7 @@ export default function Home() {
   }, [selectedImage]);
 
   const handleLogout = useCallback(() => {
-    signOut();
+    signOut({ callbackUrl: '/login' });
   }, []);
 
   if (status === 'loading') {
@@ -286,6 +295,7 @@ export default function Home() {
   }
 
   if (!session) {
+    router.push('/login');
     return null;
   }
 
@@ -299,7 +309,7 @@ export default function Home() {
       </div>
       <Canvas gl={{ antialias: false }} dpr={[1, 1.5]}>
         <Suspense fallback={<Loader />}>
-          <ScrollControls infinite horizontal damping={1.5} pages={Math.ceil(images.length / 2)} distance={1}>
+          <ScrollControls infinite horizontal damping={4} pages={Math.ceil(images.length / 3)} distance={1}>
             <Scroll>
               <Pages urls={images.map(img => img.url)} onImageClick={handleImageClick} />
             </Scroll>
@@ -352,6 +362,7 @@ export default function Home() {
               onAddComment={handleAddComment}
               onEditComment={handleEditComment}
               onDeleteComment={handleDeleteComment}
+              currentUser={{ name: session.user?.name || '', email: session.user?.email || '' }}
             />
           </div>
         )}
