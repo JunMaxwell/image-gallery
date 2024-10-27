@@ -1,12 +1,13 @@
 import * as THREE from "three";
-import { Suspense, useRef, useMemo, useState, useCallback } from "react";
+import { Suspense, useRef, useMemo, useState, useCallback, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Preload, useTexture, ScrollControls, Scroll, useScroll, Html, useProgress } from "@react-three/drei";
 import { Button, message, Upload, Modal, Input, List } from 'antd';
-import { UploadOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
+import { UploadOutlined, DeleteOutlined, EditOutlined, LogoutOutlined } from '@ant-design/icons';
 import type { RcFile, UploadProps } from 'antd/es/upload';
 import Image from 'next/image';
-
+import { useSession, signOut } from 'next-auth/react';
+import { useRouter } from 'next/router';
 interface ImageProps {
   position: [number, number, number];
   scale: [number, number, number];
@@ -198,6 +199,8 @@ function CommentSection({ comments, onAddComment, onEditComment, onDeleteComment
 }
 
 export default function Home() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [images, setImages] = useState<ImageData[]>([
     { url: "/image1.jpeg", comments: [] },
     { url: "/image2.jpeg", comments: [] },
@@ -216,6 +219,12 @@ export default function Home() {
     { url: "/image15.jpeg", comments: [] },
   ]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    }
+  }, [status, router]);
 
   const handleUpload = useCallback((file: RcFile) => {
     const reader = new FileReader();
@@ -268,10 +277,25 @@ export default function Home() {
     }
   }, [selectedImage]);
 
+  const handleLogout = useCallback(() => {
+    signOut();
+  }, []);
+
+  if (status === 'loading') {
+    return <div>Loading...</div>;
+  }
+
+  if (!session) {
+    return null;
+  }
+
   return (
     <>
       <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 1000 }}>
         <UploadButton onUpload={handleUpload} />
+      </div>
+      <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 1000 }}>
+        <Button icon={<LogoutOutlined />} onClick={handleLogout}>Logout</Button>
       </div>
       <Canvas gl={{ antialias: false }} dpr={[1, 1.5]}>
         <Suspense fallback={<Loader />}>
