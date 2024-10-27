@@ -2,8 +2,8 @@ import * as THREE from "three";
 import { Suspense, useRef, useMemo, useState, useCallback } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Preload, useTexture, ScrollControls, Scroll, useScroll, Html, useProgress } from "@react-three/drei";
-import { Button, message, Upload, Modal } from 'antd';
-import { UploadOutlined } from '@ant-design/icons';
+import { Button, message, Upload, Modal, Input, List } from 'antd';
+import { UploadOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import type { RcFile, UploadProps } from 'antd/es/upload';
 import Image from 'next/image';
 
@@ -12,6 +12,16 @@ interface ImageProps {
   scale: [number, number, number];
   url: string;
   onClick: () => void;
+}
+
+interface Comment {
+  id: string;
+  text: string;
+}
+
+interface ImageData {
+  url: string;
+  comments: Comment[];
 }
 
 function Image3D({ position, scale, url, onClick }: ImageProps) {
@@ -118,13 +128,92 @@ function UploadButton({ onUpload }: { onUpload: (file: RcFile) => void }) {
   );
 }
 
+function CommentSection({ comments, onAddComment, onEditComment, onDeleteComment }: {
+  comments: Comment[];
+  onAddComment: (text: string) => void;
+  onEditComment: (id: string, newText: string) => void;
+  onDeleteComment: (id: string) => void;
+}) {
+  const [newComment, setNewComment] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+
+  const handleAddComment = () => {
+    if (newComment.trim()) {
+      onAddComment(newComment.trim());
+      setNewComment('');
+    }
+  };
+
+  const handleEditClick = (comment: Comment) => {
+    setEditingId(comment.id);
+    setEditText(comment.text);
+  };
+
+  const handleEditSave = (id: string) => {
+    if (editText.trim()) {
+      onEditComment(id, editText.trim());
+      setEditingId(null);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: '20px', width: '100%' }}>
+      <Input.TextArea
+        value={newComment}
+        onChange={(e) => setNewComment(e.target.value)}
+        placeholder="Add a comment..."
+        autoSize={{ minRows: 2, maxRows: 4 }}
+      />
+      <Button onClick={handleAddComment} style={{ marginTop: '10px' }}>Add Comment</Button>
+      <List
+        itemLayout="horizontal"
+        dataSource={comments}
+        renderItem={(comment) => (
+          <List.Item
+            actions={[
+              <Button key="edit" icon={<EditOutlined />} onClick={() => handleEditClick(comment)} />,
+              <Button key="delete" icon={<DeleteOutlined />} onClick={() => onDeleteComment(comment.id)} />,
+            ]}
+          >
+            {editingId === comment.id ? (
+              <>
+                <Input.TextArea
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  autoSize={{ minRows: 2, maxRows: 4 }}
+                />
+                <Button onClick={() => handleEditSave(comment.id)}>Save</Button>
+              </>
+            ) : (
+              <List.Item.Meta
+                title={comment.text}
+              />
+            )}
+          </List.Item>
+        )}
+      />
+    </div>
+  );
+}
+
 export default function Home() {
-  const [urls, setUrls] = useState<string[]>([
-    "/image1.jpeg", "/image2.jpeg", "/image3.jpeg",
-    "/image4.jpeg", "/image5.jpeg", "/image6.jpeg",
-    "/image7.jpeg", "/image8.jpeg", "/image9.jpeg",
-    "/image10.jpeg", "/image11.jpeg", "/image12.jpeg",
-    "/image13.jpeg", "/image14.jpeg", "/image15.jpeg"
+  const [images, setImages] = useState<ImageData[]>([
+    { url: "/image1.jpeg", comments: [] },
+    { url: "/image2.jpeg", comments: [] },
+    { url: "/image3.jpeg", comments: [] },
+    { url: "/image4.jpeg", comments: [] },
+    { url: "/image5.jpeg", comments: [] },
+    { url: "/image6.jpeg", comments: [] },
+    { url: "/image7.jpeg", comments: [] },
+    { url: "/image8.jpeg", comments: [] },
+    { url: "/image9.jpeg", comments: [] },
+    { url: "/image10.jpeg", comments: [] },
+    { url: "/image11.jpeg", comments: [] },
+    { url: "/image12.jpeg", comments: [] },
+    { url: "/image13.jpeg", comments: [] },
+    { url: "/image14.jpeg", comments: [] },
+    { url: "/image15.jpeg", comments: [] },
   ]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
@@ -132,7 +221,7 @@ export default function Home() {
     const reader = new FileReader();
     reader.onload = (e) => {
       if (e.target && typeof e.target.result === 'string') {
-        setUrls(prevUrls => [...prevUrls, e.target.result]);
+        setImages(prevImages => [...prevImages, { url: e.target.result, comments: [] }]);
         message.success(`${file.name} file uploaded successfully`);
       }
     };
@@ -147,6 +236,38 @@ export default function Home() {
     setSelectedImage(null);
   }, []);
 
+  const handleAddComment = useCallback((text: string) => {
+    if (selectedImage) {
+      setImages(prevImages => prevImages.map(img => 
+        img.url === selectedImage 
+          ? { ...img, comments: [...img.comments, { id: Date.now().toString(), text }] }
+          : img
+      ));
+    }
+  }, [selectedImage]);
+
+  const handleEditComment = useCallback((id: string, newText: string) => {
+    if (selectedImage) {
+      setImages(prevImages => prevImages.map(img => 
+        img.url === selectedImage 
+          ? { ...img, comments: img.comments.map(comment => 
+              comment.id === id ? { ...comment, text: newText } : comment
+            )}
+          : img
+      ));
+    }
+  }, [selectedImage]);
+
+  const handleDeleteComment = useCallback((id: string) => {
+    if (selectedImage) {
+      setImages(prevImages => prevImages.map(img => 
+        img.url === selectedImage 
+          ? { ...img, comments: img.comments.filter(comment => comment.id !== id) }
+          : img
+      ));
+    }
+  }, [selectedImage]);
+
   return (
     <>
       <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 1000 }}>
@@ -154,9 +275,12 @@ export default function Home() {
       </div>
       <Canvas gl={{ antialias: false }} dpr={[1, 1.5]}>
         <Suspense fallback={<Loader />}>
-          <ScrollControls infinite horizontal damping={1} pages={Math.ceil(urls.length / 3)} distance={1}>
+          <ScrollControls infinite horizontal damping={1.5} pages={Math.ceil(images.length / 2)} distance={1}>
             <Scroll>
-              <Pages urls={urls} onImageClick={handleImageClick} />
+              <Pages urls={images.map(img => img.url)} onImageClick={handleImageClick} />
+            </Scroll>
+            <Scroll html>
+              {/* Commented out HTML content */}
             </Scroll>
           </ScrollControls>
           <Preload all />
@@ -170,34 +294,40 @@ export default function Home() {
         style={{ maxWidth: '800px', top: '50%', transform: 'translateY(-50%)' }}
         styles={{
           body: { 
-            padding: 0, 
-            height: '60vh', 
-            maxHeight: '600px', 
-            overflow: 'hidden',
+            padding: 20, 
+            height: '80vh', 
+            maxHeight: '800px', 
+            overflow: 'auto',
             borderRadius: '8px',
           },
           mask: { backdropFilter: 'blur(5px)' },
         }}
       >
         {selectedImage && (
-          <div style={{ 
-            width: '100%', 
-            height: '100%', 
-            display: 'flex', 
-            justifyContent: 'center', 
-            alignItems: 'center', 
-            backgroundColor: 'rgba(0, 0, 0, 0.85)',
-            borderRadius: '8px',
-            position: 'relative',
-          }}>
-            <Image 
-              src={selectedImage} 
-              alt="Selected"
-              fill
-              style={{ 
-                objectFit: 'contain',
-                boxShadow: '0 0 20px rgba(255, 255, 255, 0.1)'
-              }} 
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <div style={{ 
+              width: '100%',
+              height: '60%',
+              position: 'relative',
+              backgroundColor: 'rgba(0, 0, 0, 0.85)',
+              borderRadius: '8px',
+              marginBottom: '20px',
+            }}>
+              <Image 
+                src={selectedImage} 
+                alt="Selected"
+                fill
+                style={{ 
+                  objectFit: 'contain',
+                  boxShadow: '0 0 20px rgba(255, 255, 255, 0.1)'
+                }} 
+              />
+            </div>
+            <CommentSection 
+              comments={images.find(img => img.url === selectedImage)?.comments || []}
+              onAddComment={handleAddComment}
+              onEditComment={handleEditComment}
+              onDeleteComment={handleDeleteComment}
             />
           </div>
         )}
