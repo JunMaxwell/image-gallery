@@ -28,11 +28,7 @@ export default function LoginPage() {
       }
     } catch (error) {
       console.error('Login error:', error);
-      if (error instanceof Error) {
-        message.error(error.message);
-      } else {
-        message.error('An unexpected error occurred');
-      }
+      message.error(error instanceof Error ? error.message : 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }

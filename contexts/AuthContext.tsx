@@ -27,8 +27,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
-      const token = await apiLogin(email, password);
-      localStorage.setItem('token', token);
+      await apiLogin(email, password);
       setIsAuthenticated(true);
       message.success('Login successful');
       router.push('/');

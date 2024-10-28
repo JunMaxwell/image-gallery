@@ -18,20 +18,19 @@ export const authOptions: NextAuthOptions = {
         try {
           const response = await login(credentials.email, credentials.password);
           if (response.access_token) {
-            // Return the user object with the access token
-            return { 
-              id: response.id || 'user_id',  // Adjust this based on your backend response
-              email: credentials.email,
-              name: response.name || credentials.email,
-              access_token: response.access_token
-            };
+            return {
+              id: response.id,
+              email: response.email,
+              name: response.name,
+              accessToken: response.access_token
+            } as any;
           } else {
             console.error('Login response:', response);
-            throw new Error('Invalid credentials');
+            return null;
           }
         } catch (error) {
           console.error('Authentication error:', error);
-          throw new Error('Authentication failed');
+          return null;
         }
       }
     })
@@ -39,12 +38,15 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.access_token = user.access_token;
+        token.accessToken = user.accessToken;
       }
       return token;
     },
     async session({ session, token }) {
-      session.access_token = token.access_token;
+      if (session.user) {
+        session.user.id = token.sub;
+      }
+      session.accessToken = token.accessToken;
       return session;
     },
   },

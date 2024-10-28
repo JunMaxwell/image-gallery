@@ -15,26 +15,15 @@ type UserResponse = {
   access_token: string;
 }
 
-export const createApiClient = (context?: GetServerSidePropsContext) => {
-  const api = axios.create({
-    baseURL: API_URL,
-  });
-
-  api.interceptors.request.use(async (config) => {
-    let session;
-    if (context) {
-      session = await getSession(context);
-    } else {
-      session = await getSession();
-    }
-    if (session?.access_token) {
-      config.headers['Authorization'] = `Bearer ${session.access_token}`;
-    }
-    return config;
-  });
-
-  return api;
-};
+api.interceptors.request.use(async (config) => {
+  const session = await getSession();
+  if (session?.accessToken) {
+    config.headers['Authorization'] = `Bearer ${session.accessToken}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
 
 export const login = async (email: string, password: string): Promise<UserResponse> => {
   try {
@@ -56,22 +45,38 @@ export const login = async (email: string, password: string): Promise<UserRespon
 };
 
 export const logout = async () => {
-  const api = createApiClient();
   await api.post('/auth/logout');
 }
 
-export const getImages = async (context?: GetServerSidePropsContext) => {
-  const api = createApiClient(context);
+export const getImages = async () => {
   const response = await api.get('/images');
   return response.data;
 };
 
-export const addComment = async (imageId: number, text: string, context?: GetServerSidePropsContext) => {
-  const api = createApiClient(context);
+export const addComment = async (imageId: number, text: string) => {
   const response = await api.post(`/images/${imageId}/comments`, { text });
   return response.data;
 };
 
-// Add other API calls here as needed
+export const uploadImage = async (file: File) => {
+  const formData = new FormData();
+  formData.append('image', file);
 
-export default createApiClient;
+  try {
+    const session = await getSession();
+    if (!session?.accessToken || !session.user?.id) {
+      throw new Error('Not authenticated');
+    }
+
+    formData.append('userId', session.user.id.toString());
+    const response = await api.post('/images/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error uploading image:', error);
+    throw new Error('Failed to upload image');
+  }
+};

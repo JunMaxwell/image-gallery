@@ -8,6 +8,7 @@ import type { RcFile, UploadProps } from 'antd/es/upload';
 import Image from 'next/image';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/router';
+import { uploadImage } from "./api/api";
 
 interface ImageProps {
   position: [number, number, number];
@@ -117,12 +118,27 @@ function Pages({ urls, onImageClick }: { urls: string[], onImageClick: (url: str
   );
 }
 
-function UploadButton({ onUpload }: { onUpload: (file: RcFile) => void }) {
+function ImageUpload({ onUpload }: { onUpload: (file: RcFile) => void }) {
+  const [uploading, setUploading] = useState(false);
+
+  const handleUpload = async (file: RcFile) => {
+    setUploading(true);
+    try {
+      const result = await uploadImage(file);
+      onUpload(file);
+      message.success('Image uploaded successfully');
+    } catch (error) {
+      message.error('Failed to upload image');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const props: UploadProps = {
     name: 'file',
     accept: 'image/*',
     beforeUpload: (file) => {
-      onUpload(file);
+      handleUpload(file);
       return false;
     },
     showUploadList: false,
@@ -130,7 +146,7 @@ function UploadButton({ onUpload }: { onUpload: (file: RcFile) => void }) {
 
   return (
     <Upload {...props}>
-      <Button icon={<UploadOutlined />}>Upload Image</Button>
+      <Button icon={<UploadOutlined />} loading={uploading}>Upload Image</Button>
     </Upload>
   );
 }
@@ -302,7 +318,7 @@ export default function Home() {
   return (
     <>
       <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 1000 }}>
-        <UploadButton onUpload={handleUpload} />
+        <ImageUpload onUpload={handleUpload} />
       </div>
       <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 1000 }}>
         <Button icon={<LogoutOutlined />} onClick={handleLogout}>Logout</Button>
