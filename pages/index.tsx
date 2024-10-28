@@ -28,7 +28,7 @@ interface Comment {
 }
 
 interface ImageData {
-  url: string;
+  url: string | ArrayBuffer;
   comments: Comment[];
 }
 
@@ -43,7 +43,7 @@ function Image3D({ position, scale, url, onClick }: ImageProps) {
       group.current.position.z = THREE.MathUtils.damp(group.current.position.z, Math.max(0, data.delta * 50), 4, delta);
       (ref.current.material as THREE.MeshBasicMaterial).opacity = THREE.MathUtils.damp(
         (ref.current.material as THREE.MeshBasicMaterial).opacity,
-        Math.max(0.2, 1 - data.delta * 1000),
+        Math.max(0.85, 1 - data.delta * 1000),
         4,
         delta
       );
@@ -325,9 +325,9 @@ export default function Home() {
       </div>
       <Canvas gl={{ antialias: false }} dpr={[1, 1.5]}>
         <Suspense fallback={<Loader />}>
-          <ScrollControls infinite horizontal damping={4} pages={Math.ceil(images.length / 3)} distance={1}>
+          <ScrollControls infinite horizontal damping={1} pages={Math.ceil(images.length / 1.5)} distance={1}>
             <Scroll>
-              <Pages urls={images.map(img => img.url)} onImageClick={handleImageClick} />
+              <Pages urls={images.map(img => img.url.toString())} onImageClick={handleImageClick} />
             </Scroll>
             <Scroll html>
               {/* Commented out HTML content */}
