@@ -1,11 +1,6 @@
 import NextAuth, { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-
-// Mock user data
-const users = [
-  { id: '1', name: 'Admin', email: 'admin@example.com', password: 'admin123' },
-  { id: '2', name: 'User', email: 'user@example.com', password: 'user123' },
-];
+import { login } from '../api';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -17,36 +12,46 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          return null;
+          throw new Error('Email and password are required');
         }
 
-        const user = users.find(user => user.email === credentials.email && user.password === credentials.password);
-
-        if (user) {
-          return { id: user.id, name: user.name, email: user.email };
-        } else {
-          return null;
+        try {
+          const response = await login(credentials.email, credentials.password);
+          if (response.access_token) {
+            // Return the user object with the access token
+            return { 
+              id: response.id || 'user_id',  // Adjust this based on your backend response
+              email: credentials.email,
+              name: response.name || credentials.email,
+              access_token: response.access_token
+            };
+          } else {
+            console.error('Login response:', response);
+            throw new Error('Invalid credentials');
+          }
+        } catch (error) {
+          console.error('Authentication error:', error);
+          throw new Error('Authentication failed');
         }
       }
     })
   ],
-  pages: {
-    signIn: '/login',
-  },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
+        token.access_token = user.access_token;
       }
       return token;
     },
     async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string;
-      }
+      session.access_token = token.access_token;
       return session;
     },
   },
+  pages: {
+    signIn: '/login',
+  },
+  debug: process.env.NODE_ENV === 'development',
 };
 
 export default NextAuth(authOptions);

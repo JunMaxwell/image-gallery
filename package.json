@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "cross-env NODE_OPTIONS='--inspect' next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -17,10 +17,12 @@
     "@types/react-dom": "^18.0.11",
     "@types/three": "^0.150.1",
     "antd": "^5.4.0",
+    "axios": "^1.7.7",
     "next": "^13.5.7",
     "next-auth": "^4.24.10",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "swr": "^2.2.5",
     "three": "^0.151.3",
     "typescript": "^5.0.3"
   },

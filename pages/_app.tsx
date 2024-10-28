@@ -4,9 +4,9 @@ import { SessionProvider } from 'next-auth/react';
 import { ConfigProvider } from 'antd';
 import 'antd/dist/reset.css';
 
-function MyApp({ Component, pageProps }: AppProps) {
+function MyApp({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   return (
-    <SessionProvider session={pageProps.session}>
+    <SessionProvider session={session}>
       <ConfigProvider>
         <Component {...pageProps} />
       </ConfigProvider>
